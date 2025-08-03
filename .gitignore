@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# Secrets and sensitive info
+.env
+secrets/
+data/
+logs/
+calendar/*.ics
+
+# System files
+.DS_Store
+*.swp
