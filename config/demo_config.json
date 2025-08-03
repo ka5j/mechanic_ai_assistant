@@ -1,0 +1,62 @@
+{
+    "shop_name": "Superior Auto Clinic",
+    "phone": "+1-647-888-0000",
+    "address": "123 Auto Lane, Toronto, ON",
+    "hours": {
+        "Monday": "8:00 AM - 6:00 PM",
+        "Tuesday": "8:00 AM - 6:00 PM",
+        "Wednesday": "8:00 AM - 6:00 PM",
+        "Thursday": "8:00 AM - 6:00 PM",
+        "Friday": "8:00 AM - 6:00 PM",
+        "Saturday": "9:00 AM - 3:00 PM",
+        "Sunday": "Closed"
+    },
+    "services": [
+        {
+            "name": "Oil Change",
+            "description": "Standard oil and filter change. Includes top-up of fluids.",
+            "price": "From $60",
+            "duration_minutes": 30
+        },
+        {
+            "name": "Brake Inspection",
+            "description": "Thorough check of pads, rotors, and calipers.",
+            "price": "$40",
+            "duration_minutes": 30
+        },
+        {
+            "name": "Tire Rotation",
+            "description": "Rotate and rebalance all four tires.",
+            "price": "$30",
+            "duration_minutes": 20
+        },
+        {
+            "name": "Battery Test & Replacement",
+            "description": "Diagnostic and replacement if necessary.",
+            "price": "Testing $25, replacement extra",
+            "duration_minutes": 25
+        }
+    ],
+    "faq": {
+        "Do you do safety inspections?": "Yes, we offer licensed safety inspections. Please book in advance.",
+        "How long does an oil change take?": "Typically about 30 minutes.",
+        "Can I drop off my car before hours?": "Yes, we have a key drop box outside the main door.",
+        "Are you open on Sundays?": "We are closed on Sundays."
+    },
+    "booking_slots": {
+        "start": "09:00",
+        "end": "17:00",
+        "interval_minutes": 30
+    },
+    "reminders": {
+        "enabled": true,
+        "send_hours_before": 24
+    },
+    "support_escalation": {
+        "enabled": true,
+        "message": "I'm transferring you to a real staff member for help."
+    },
+    "calendar": {
+        "ics_path": "data/calendar/appointments.ics"
+    }
+}
