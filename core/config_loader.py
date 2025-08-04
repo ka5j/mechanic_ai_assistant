@@ -1,54 +1,60 @@
 # core/config_loader.py
 
 import json
-import os
+from pathlib import Path
 from dotenv import load_dotenv
+import os
+from core.config_schema import RootConfig
 
-REQUIRED_FIELDS = [
-    "shop_name", "phone", "address", "hours", "services",
-    "faq", "booking_slots", "reminders", "support_escalation", "calendar"
-]
+# Path constants (adjust if your layout differs)
+DEFAULT_CONFIG_PATH = Path("config/demo_config.json")
+DEFAULT_ENV_PATH = Path("secrets/.env")
 
-def load_env_variables():
+
+def load_raw_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found at {path.resolve()}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_config() -> RootConfig:
     """
-    Loads .env file securely from secrets folder.
+    Loads environment variables and the JSON config, validates against schema,
+    and returns a typed RootConfig instance.
     """
-    dotenv_path = os.path.join(os.path.dirname(__file__), '..', 'secrets', '.env')
-    load_dotenv(dotenv_path)
+    # Load .env early so any env overrides are present
+    if DEFAULT_ENV_PATH.exists():
+        load_dotenv(dotenv_path=DEFAULT_ENV_PATH)
+    else:
+        # Still attempt to load default env if user specified alternative via environment
+        load_dotenv()
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    raw = load_raw_config()
+    try:
+        config = RootConfig(**raw)
+        # Ensure calendar directory exists (creates parent if needed)
+        config.calendar.ensure_parent()
+        return config
+    except Exception as e:
+        # Wrap with context for clarity
+        raise RuntimeError(f"Configuration validation failed: {e}") from e
 
-    if not api_key:
-        raise ValueError("❌ Missing OPENAI_API_KEY in .env file.")
 
-    return {
-        "OPENAI_API_KEY": api_key,
-        "OPENAI_MODEL": model
+def load_env_variables() -> dict:
+    """
+    Loads required environment variables (e.g., OPENAI_API_KEY) into a plain dict.
+    Does not validate beyond presence; caller can extend if needed.
+    """
+    # Ensure .env is loaded as well
+    if DEFAULT_ENV_PATH.exists():
+        load_dotenv(dotenv_path=DEFAULT_ENV_PATH)
+    else:
+        load_dotenv()
+
+    result = {
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", "").strip(),
     }
-
-def load_config(path="config/demo_config.json"):
-    """
-    Loads assistant behavior configuration (shop info, booking, etc).
-    """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"❌ Config file not found at: {path}")
-    
-    with open(path, "r") as f:
-        config = json.load(f)
-
-    # Validate structure
-    for field in REQUIRED_FIELDS:
-        if field not in config:
-            raise ValueError(f"❌ Missing required config field: '{field}'")
-
-    # Validate booking slots
-    if "start" not in config["booking_slots"] or "end" not in config["booking_slots"]:
-        raise ValueError("❌ 'booking_slots' must include both 'start' and 'end'.")
-
-    # Validate calendar path
-    if "ics_path" not in config["calendar"]:
-        raise ValueError("❌ 'calendar' must include 'ics_path'.")
-
-    print("✅ Config loaded successfully.")
-    return config
+    if not result["OPENAI_API_KEY"]:
+        raise RuntimeError("OPENAI_API_KEY not set in environment.")
+    return result
