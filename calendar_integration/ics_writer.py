@@ -1,33 +1,31 @@
 # calendar_integration/ics_writer.py
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from ics import Calendar, Event
 
-CALENDAR_DIR = Path("data/calendar")
-CALENDAR_DIR.mkdir(parents=True, exist_ok=True)
-ICS_FILE = CALENDAR_DIR / "appointments.ics"
+ICS_FILE = Path("data/calendar/appointments.ics")
+ICS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-def add_event_to_calendar(date, time, title, description):
+def add_event_to_calendar(date, time, title, description, duration_minutes=30):
     """
-    Adds a new event to the calendar .ics file.
+    Adds a new event to the .ics file.
     """
     try:
-        # Parse datetime
-        dt_str = f"{date} {time}"
-        start_dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+        start_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
 
-        # Load existing calendar if exists
+        # Load existing calendar or create new
         calendar = Calendar()
         if ICS_FILE.exists():
             with open(ICS_FILE, "r") as f:
                 calendar = Calendar(f.read())
 
-        # Create and add event
+        # Add new event
         event = Event()
         event.name = title
         event.begin = start_dt
-        event.duration = {"hours": 1}
+        event.end = end_dt
         event.description = description
         calendar.events.add(event)
 
@@ -36,5 +34,6 @@ def add_event_to_calendar(date, time, title, description):
             f.writelines(calendar.serialize_iter())
 
         print("🗓️ Appointment added to .ics calendar.")
+
     except Exception as e:
-        print(f"❌ Failed to add to calendar: {e}")
+        print(f"❌ Failed to write appointment: {e}")
