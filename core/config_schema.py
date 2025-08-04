@@ -1,6 +1,6 @@
 # core/config_schema.py
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ValidationError
 from typing import List, Optional
 from pathlib import Path
 
@@ -8,9 +8,9 @@ from pathlib import Path
 class ServiceConfig(BaseModel):
     name: str
     duration_minutes: int = Field(30, gt=0)
-    price: Optional[str] = None  # could be a string like "$79.99"
+    price: Optional[str] = None  # e.g., "$79.99"
 
-    @validator("name")
+    @field_validator("name")
     def name_not_empty(cls, v):
         if not v.strip():
             raise ValueError("service name must not be empty")
@@ -22,8 +22,8 @@ class BookingSlotsConfig(BaseModel):
 
 
 class HoursConfig(BaseModel):
-    open: str = Field(..., regex=r"^\d{2}:\d{2}$")  # "09:00"
-    close: str = Field(..., regex=r"^\d{2}:\d{2}$")
+    open: str = Field(..., pattern=r"^\d{2}:\d{2}$")  # "09:00"
+    close: str = Field(..., pattern=r"^\d{2}:\d{2}$")  # "17:00"
 
 
 class CalendarConfig(BaseModel):
@@ -40,7 +40,7 @@ class RootConfig(BaseModel):
     hours: HoursConfig
     calendar: CalendarConfig
 
-    @validator("services")
+    @field_validator("services")
     def must_have_at_least_one_service(cls, v):
         if not v:
             raise ValueError("At least one service must be defined")

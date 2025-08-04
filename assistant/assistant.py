@@ -17,7 +17,7 @@ env = load_env_variables()
 client = OpenAI(api_key=env["OPENAI_API_KEY"])
 config = load_config()
 
-# === System prompt (detailed, bounded, unambiguous) ===
+# === System prompt ===
 SYSTEM_PROMPT = """
 You are a professional, strict, and cost-conscious AI receptionist for a mechanic shop.
 Your domain is only:
@@ -41,15 +41,21 @@ def classify_intent(user_input: str) -> str:
     lowered = user_input.lower()
     if any(k in lowered for k in ["book", "appointment", "schedule", "reserve"]):
         return "booking"
-    if any(k in lowered for k in ["price", "cost", "how much", "fee", "charge"]):
+    if any(k in lowered for k in ["price", "cost", "how much", "rate", "charge"]):
         return "pricing"
     if any(k in lowered for k in ["what", "when", "hours", "open", "close", "availability"]):
         return "information"
     return "general"
 
-# Confirmation keyword sets
-AFFIRMATIVE_KEYWORDS = {"yes", "yep", "correct", "that is right", "sure", "sounds good", "affirmative", "yup", "right"}
-NEGATIVE_KEYWORDS = {"no", "nah", "incorrect", "don't", "do not", "nope", "not really", "wrong"}
+# Confirmation keyword sets (expanded variants)
+AFFIRMATIVE_KEYWORDS = {
+    "yes", "yep", "correct", "that is right", "sure", "sounds good", "affirmative",
+    "yup", "right", "yeah", "please do", "go ahead", "works", "okay", "ok"
+}
+NEGATIVE_KEYWORDS = {
+    "no", "nah", "incorrect", "don't", "do not", "nope", "not really", "wrong",
+    "actually", "change", "cancel"
+}
 
 # Build minimal LLM prompt
 def build_llm_prompt(user_input: str, session: CallSession, missing_slots: list[str]) -> list[dict]:
@@ -107,7 +113,7 @@ def handle_info_intent(user_input: str, session: CallSession) -> str:
         log_event(call_id, "info_response", output_data=reply)
         session.add_history("info_response", output_data=reply)
         return reply
-    if "price" in lowered or "cost" in lowered:
+    if any(kw in lowered for kw in ["price", "cost", "how much", "rate", "charge"]):
         found = []
         for s in config.services:
             if s.name.lower() in lowered:
@@ -255,7 +261,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
         log_event(call_id, "confirmation_rejected", output_data=user_reply)
         return "Okay, let's try again."
 
-    # 4. Proceed to booking (slots confirmed)
+    # 4. Proceed to booking
     try:
         desired_dt = parse_local_datetime(session.state["date"], session.state["time"])
     except Exception:
@@ -263,7 +269,6 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
         mark_and_log(session, "parse_error")
         return escalation_message()
 
-    # Determine duration
     duration = 30
     for s in config.services:
         if s.name.lower() == service.lower():
@@ -271,7 +276,6 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
             break
     session.update_slot("duration_minutes", duration)
 
-    # Conflict detection
     conflicts = has_conflict(desired_dt, duration, ics_path=config.calendar.ics_path)
     if conflicts:
         io_adapter.prompt("That slot is unavailable due to a conflict.")
@@ -307,7 +311,6 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
             mark_and_log(session, "no_alternatives")
             return escalation_message()
         
-        # Finalize booking
     try:
         title = f"{service} for {session.caller_number}"
         description = f"Booked service: {service}"
