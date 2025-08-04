@@ -1,38 +1,86 @@
-# main.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
+# 1) Auto-load your .env from the `secrets/` directory
+from dotenv import load_dotenv
+import os
 import sys
-from core.config_loader import load_config
-from utils.call_logger import log_call_start, log_call_end
-from assistant.entrypoint import start_assistant
-from assistant.session import CallSession
-from assistant.io_adapter import CLIAdapter
+from pathlib import Path
 
-def get_phone_number():
-    while True:
-        phone = input("📱 Enter customer's phone number (e.g., +1-647-555-1234): ").strip()
-        if phone.startswith("+") and len(phone) >= 10:
-            return phone
-        print("❌ Invalid phone number. Please enter again.")
+# Project root
+PROJECT_ROOT = Path(__file__).parent.resolve()
+
+# Path to your .env inside secrets/
+DOTENV_PATH = PROJECT_ROOT / "secrets" / ".env"
+if not DOTENV_PATH.exists():
+    raise RuntimeError(f".env file not found at {DOTENV_PATH}")
+# load into os.environ (override any existing vars)
+load_dotenv(DOTENV_PATH, override=True)
+
+# Ensure the key is present
+if not os.getenv("OPENAI_API_KEY"):
+    raise RuntimeError("OPENAI_API_KEY not set in secrets/.env")
+
+# 2) Make project modules importable
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# 3) Configure data directory
+os.environ.setdefault("DATA_DIR", str(PROJECT_ROOT / "data"))
+
+# 4) Core imports
+from openai import OpenAI
+from core.config_loader import load_env_variables, load_config
+from utils.usage_guard import can_call_model, record_usage
+from utils.structured_logger import log_event
+from assistant.assistant import process_interaction
+from assistant.session import CallSession
+from io_adapters.console_adapter import ConsoleAdapter
 
 def main():
-    print("\n🚗 Superior Auto Clinic – AI Receptionist\n")
+    # Load environment & config
+    env    = load_env_variables()
+    client = OpenAI(api_key=env["OPENAI_API_KEY"])
     config = load_config()
-    phone_number = get_phone_number()
-    call_id, _ = log_call_start(phone_number)
 
-    # NEW: create session and IO adapter
-    session = CallSession(call_id=call_id, caller_number=phone_number, mode="customer")
-    io = CLIAdapter()
+    print("🔧 AI Receptionist CLI")
+    print("Type 'exit' or Ctrl-D to quit.")
+    print("─────────────────────────────────\n")
 
-    try:
-        start_assistant(config, phone_number, call_id, session=session, io_adapter=io)
-    except KeyboardInterrupt:
-        print("\n🔌 Call interrupted manually.")
-    except Exception as e:
-        print(f"❗ An error occurred: {e}")
+    while True:
+        try:
+            number = input("👉 New call! Enter customer phone number: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
 
-    log_call_end(call_id)
-    print("📞 Call session ended.\n")
+        if not number or number.lower() in ("exit", "quit"):
+            print("Goodbye!")
+            break
+
+        session    = CallSession(number)
+        io_adapter = ConsoleAdapter()
+
+        print(f"\n🤖 Hello! I’m your AI receptionist. How can I help you today?\n")
+
+        while True:
+            try:
+                user_input = io_adapter.collect("> ")
+            except (EOFError, KeyboardInterrupt):
+                print("\n📞 Call ended.")
+                break
+
+            if not user_input or user_input.lower() in ("bye", "hangup", "end call", "exit"):
+                print("📞 Call closed.\n")
+                break
+
+            try:
+                process_interaction(user_input, session, io_adapter)
+            except Exception as e:
+                # Unexpected error → escalate
+                io_adapter.prompt("⚠️ Sorry, something went wrong. Transferring you to a human.")
+                print(f"[ERROR] {e!r}")
+
+        # back to “New call” loop
 
 if __name__ == "__main__":
     main()
