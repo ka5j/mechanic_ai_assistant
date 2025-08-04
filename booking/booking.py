@@ -1,8 +1,12 @@
 # booking/booking.py
 
-from calendar_integration.ics_writer import add_event_to_calendar, is_time_slot_available
-from datetime import datetime
+from calendar_integration.ics_writer import load_calendar, save_calendar, add_event_to_calendar
+from datetime import datetime, timedelta
+import os
 import re
+from utils.call_logger import log_interaction
+
+ICS_PATH = "data/calendar/appointments.ics"
 
 def is_valid_date(date_str):
     try:
@@ -14,9 +18,36 @@ def is_valid_date(date_str):
 def is_valid_time(time_str):
     return re.match(r"^\d{2}:\d{2}$", time_str)
 
-def handle_booking(config, phone_number):
+def parse_datetime(date: str, time: str) -> datetime:
+    return datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+
+def has_conflict(new_start: datetime, duration_minutes: int) -> bool:
     """
-    Handles booking interaction and adds appointment to calendar.
+    Returns True if new appointment conflicts with existing events in the .ics.
+    """
+    from ics import Calendar
+
+    if not os.path.exists(ICS_PATH):
+        return False  # no calendar yet
+
+    with open(ICS_PATH, "r") as f:
+        calendar = Calendar(f.read())
+
+    new_end = new_start + timedelta(minutes=duration_minutes)
+
+    for event in calendar.events:
+        if event.begin is None or event.end is None:
+            continue
+        existing_start = event.begin.datetime
+        existing_end = event.end.datetime
+        # overlap check
+        if new_start < existing_end and new_end > existing_start:
+            return True
+    return False
+
+def handle_booking(config: dict, phone_number: str):
+    """
+    Handles appointment booking with collision detection.
     """
     print("\n📅 Let's book your appointment.")
 
@@ -26,34 +57,85 @@ def handle_booking(config, phone_number):
         return
 
     car_model = input("🚘 Car Make/Model: ").strip()
-    issue = input("🔧 Describe the issue or service needed: ").strip()
 
-    date = input("📆 Preferred Date (YYYY-MM-DD): ").strip()
-    if not is_valid_date(date):
-        print("❌ Invalid date format.")
+    # Show available services
+    services = config.get("services", [])
+    print("\n🛠️ Available Services:")
+    for i, service in enumerate(services, start=1):
+        print(f"{i}. {service['name']} - {service['price']} ({service.get('duration_minutes', 30)} min)")
+
+    while True:
+        service_choice = input("🔢 Select a service by number: ").strip()
+        if not service_choice.isdigit() or not (1 <= int(service_choice) <= len(services)):
+            print("❌ Invalid selection. Try again.")
+            continue
+        selected_service = services[int(service_choice) - 1]
+        break
+
+    notes = input("📝 Additional notes (optional): ").strip()
+
+    # Date/time input with validation
+    while True:
+        date = input("📆 Preferred Date (YYYY-MM-DD): ").strip()
+        if not is_valid_date(date):
+            print("❌ Invalid date format.")
+            continue
+        break
+
+    while True:
+        time_str = input("⏰ Preferred Time (HH:MM): ").strip()
+        if not is_valid_time(time_str):
+            print("❌ Invalid time format.")
+            continue
+        break
+
+    # Parse and check past
+    try:
+        appointment_dt = parse_datetime(date, time_str)
+    except ValueError:
+        print("❌ Could not parse date/time.")
         return
 
-    time = input("⏰ Preferred Time (HH:MM): ").strip()
-    if not is_valid_time(time):
-        print("❌ Invalid time format.")
-        return
-
-    # Check if in the past
-    appointment_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-    if appointment_datetime < datetime.now():
+    if appointment_dt < datetime.now():
         print("❌ Cannot book in the past.")
         return
 
-    # Check for double booking
-    calendar_path = config["calendar"]["ics_path"]
-    duration = config.get("booking_slots", {}).get("interval_minutes", 30)
-    if not is_time_slot_available(calendar_path, date, time, duration):
-        print("❌ This time slot is already booked. Please choose another.")
+    duration = selected_service.get("duration_minutes", 30)
+
+    if has_conflict(appointment_dt, duration):
+        print("❌ Time slot conflict: that time is already booked.")
         return
 
-    # All good, book it
-    summary = f"{customer_name} - {car_model} - {issue}"
-    description = f"Customer: {customer_name}\nPhone: {phone_number}\nCar: {car_model}\nIssue: {issue}"
-    add_event_to_calendar(calendar_path, date, time, "Mechanic Appointment", description, duration)
+    # Confirm booking
+    print("\n🔒 Confirm Booking:")
+    print(f"Customer: {customer_name}")
+    print(f"Phone: {phone_number}")
+    print(f"Car: {car_model}")
+    print(f"Service: {selected_service['name']}")
+    print(f"When: {date} at {time_str} for {duration} minutes")
+    if notes:
+        print(f"Notes: {notes}")
+    confirm = input("Confirm? (yes/no): ").strip().lower()
+    if confirm != "yes":
+        print("❌ Booking cancelled.")
+        return
 
-    print(f"\n✅ Appointment booked for {customer_name} on {date} at {time}.")
+    description = (
+        f"Customer: {customer_name}\n"
+        f"Phone: {phone_number}\n"
+        f"Car: {car_model}\n"
+        f"Service: {selected_service['name']}\n"
+        f"Notes: {notes}"
+    )
+
+    add_event_to_calendar(date, time_str, "Mechanic Appointment", description, duration)
+    log_interaction("booking_created", {
+        "customer_name": customer_name,
+        "car_model": car_model,
+        "phone_number": phone_number,
+        "service": selected_service["name"],
+        "date": date,
+        "time": time_str,
+        "notes": notes
+    })
+    print(f"\n✅ Appointment booked for {customer_name} on {date} at {time_str}.")
