@@ -2,9 +2,9 @@
 
 import time
 from booking.booking import handle_booking
-from utils.call_logger import log_interaction
 from assistant.assistant import run_assistant
 from datetime import datetime
+from utils.structured_logger import log_event
 
 def print_menu(options: dict):
     print("\n🔧 Please select a service or action:")
@@ -12,55 +12,43 @@ def print_menu(options: dict):
         print(f"{key}. {val['label']}")
     print("0. Exit")
 
-def get_user_selection(options: dict):
-    while True:
-        choice = input("👉 Enter your choice: ").strip()
-        if choice == "0":
-            return "exit"
-        if choice in options:
-            return choice
-        print("❌ Invalid option. Please try again.")
+def start_assistant(config, phone_number, call_id, session, io_adapter):
+    # Greet the caller
+    io_adapter.prompt(f"\n👋 Hello from {config.get('shop_name', 'the shop')}! How can I help today?")
+    session.add_history("greeting", output_data="greeting sent")
+    log_event(session.call_id, "greeting", output_data="greeting prompt displayed")
 
-def start_assistant(config, phone_number, call_id):
-    """
-    Runs the main assistant loop with menu-based options using real OpenAI and booking logic.
-    """
-    print(f"\n🤖 Welcome to {config.get('shop_name', 'the shop')}! How can I help you today?")
-    
-    # Build a minimal menu if none supplied
-    menu_options = config.get("menu")
-    if not menu_options:
-        menu_options = {
+    while True:
+        options = {
             "1": {"label": "Book an appointment", "type": "booking"},
-            "2": {"label": "Ask a question", "type": "question", "prompt": "General inquiry"}
+            "2": {"label": "Ask a question", "type": "question"},
         }
+        print_menu(options)
+        selection = io_adapter.collect("Select option: ")
+        session.add_history("menu_selection", input_data=selection)
+        log_event(session.call_id, "menu_selection", input_data=selection)
 
-    while True:
-        print_menu(menu_options)
-        user_choice = get_user_selection(menu_options)
-
-        if user_choice == "exit":
-            print("👋 Thank you! Have a great day.")
+        if selection == "0":
+            io_adapter.confirm("Goodbye!")
+            session.add_history("exit", output_data="user exited")
+            log_event(session.call_id, "exit", output_data="user exited")
             break
 
-        selected_action = menu_options[user_choice]
-        action_type = selected_action.get("type")
-        action_prompt = selected_action.get("prompt", "")
-
-        log_interaction(call_id, {
-            "action": action_type,
-            "menu_choice": selected_action.get("label"),
-            "timestamp": time.time()
-        })
-
-        if action_type == "booking":
-            handle_booking(config, phone_number, call_id)
-        elif action_type == "question":
-            user_question = input("🗣️ What would you like to ask? ").strip()
+        action = options.get(selection, {}).get("type")
+        if action == "booking":
+            handle_booking(config, phone_number, call_id, session=session, io_adapter=io_adapter)
+        elif action == "question":
+            user_question = io_adapter.collect("🗣️ What would you like to ask? ")
             if not user_question:
-                print("❌ No question entered.")
+                io_adapter.prompt("❌ No question entered.")
                 continue
-            response = run_assistant(user_question, config)
-            print(f"\n🤖 {response}")
+            session.add_history("user_question", input_data=user_question)
+            log_event(session.call_id, "user_question", input_data=user_question)
+            response = run_assistant(user_question, config, session=session)
+            io_adapter.prompt(f"\n🤖 {response}")
+            session.add_history("assistant_response", output_data=response)
+            log_event(session.call_id, "assistant_response", output_data=response)
         else:
-            print("⚠️ This action type is not yet supported.")
+            io_adapter.prompt("⚠️ This action type is not yet supported.")
+            session.add_history("unsupported_action", input_data=selection)
+            log_event(session.call_id, "unsupported_action", input_data=selection)
