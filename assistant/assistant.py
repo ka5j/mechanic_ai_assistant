@@ -17,6 +17,56 @@ from calendar_integration.ics_writer import (
 from datetime import datetime, time as dtime
 from typing import Optional
 
+# ==== LLM confirmation helper & exceptions ====
+
+class UsageLimitError(Exception):
+    """Raised when can_call_model() returns False."""
+    pass
+
+def llm_confirm(paraphrase: str, session: 'CallSession') -> bool | None:
+    """
+    Ask the LLM a yes/no question (paraphrase).
+    Returns True for yes, False for no, or None if unclear.
+    Raises UsageLimitError if calling the model is disallowed.
+    """
+    # Check quota
+    if not can_call_model():
+        raise UsageLimitError()
+
+    # Build the LLM prompt
+    messages = build_llm_prompt(paraphrase, session, missing_slots=[])
+    # Call GPT deterministically
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        temperature=0.0,
+        max_tokens=32,
+    )
+
+    # Record token usage
+    usage = getattr(response, "usage", {}) or {}
+    total = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
+    if total:
+        record_usage(total)
+        try:
+            persist_usage(session.call_id, total)
+        except Exception:
+            # best effort
+            pass
+
+    # Extract and normalize output
+    text = response.choices[0].message.content.strip().lower()
+    log_event(session.call_id, "llm_confirm_reply", input_data=paraphrase, output_data=text)
+    session.add_history("llm_confirm_reply", input_data=paraphrase, output_data=text)
+
+    # Map to boolean or None
+    if any(kw in text for kw in AFFIRMATIVE_KEYWORDS):
+        return True
+    if any(kw in text for kw in NEGATIVE_KEYWORDS):
+        return False
+    return None
+
+
 # Load configuration and OpenAI client
 env = load_env_variables()
 client = OpenAI(api_key=env["OPENAI_API_KEY"])

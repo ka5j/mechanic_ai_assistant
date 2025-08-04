@@ -2,32 +2,40 @@
 
 import json
 from pathlib import Path
+from core.paths import USAGE_JSON_PATH as USAGE_FILE
 
-USAGE_FILE = Path("data/usage/usage.json")
-USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
+def load_usage() -> dict:
+    """
+    Load the cumulative token-usage record.
+    If the file doesn’t exist, initialize it to {"tokens": 0}.
+    """
+    path = Path(USAGE_FILE)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"tokens": 0}), encoding="utf-8")
+    return json.loads(path.read_text(encoding="utf-8"))
 
-# Rough cost assumptions (adjust to current pricing)
-COST_PER_1K_TOKENS = 0.002  # example: $0.002 per 1k tokens for gpt-3.5
-HARD_LIMIT_DOLLARS = 4.50   # stop before $5
+def save_usage(data: dict):
+    """
+    Overwrite the usage file with `data`.
+    """
+    path = Path(USAGE_FILE)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def load_usage():
-    if USAGE_FILE.exists():
-        with open(USAGE_FILE, "r") as f:
-            return json.load(f)
-    return {"tokens": 0, "cost": 0.0}
-
-def save_usage(usage):
-    with open(USAGE_FILE, "w") as f:
-        json.dump(usage, f, indent=2)
-
-def can_call_model(additional_tokens=0):
+def can_call_model() -> bool:
+    """
+    Return False if total tokens exceed your configured limit.
+    """
     usage = load_usage()
-    projected_tokens = usage["tokens"] + additional_tokens
-    projected_cost = projected_tokens / 1000 * COST_PER_1K_TOKENS
-    return projected_cost <= HARD_LIMIT_DOLLARS
+    # Example limit; replace with your actual config
+    limit = 100_000
+    return usage.get("tokens", 0) < limit
 
-def record_usage(tokens_used):
-    usage = load_usage()
-    usage["tokens"] += tokens_used
-    usage["cost"] = usage["tokens"] / 1000 * COST_PER_1K_TOKENS
-    save_usage(usage)
+def record_usage(tokens_used: int):
+    """
+    Increment the total usage counter by tokens_used.
+    """
+    data = load_usage()
+    data["tokens"] = data.get("tokens", 0) + tokens_used
+    save_usage(data)
