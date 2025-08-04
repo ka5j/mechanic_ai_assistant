@@ -1,5 +1,20 @@
 import json
 import os
+from dotenv import load_dotenv
+
+def load_env_variables():
+    dotenv_path = os.path.join(os.path.dirname(__file__), '..', 'secrets', '.env')
+    load_dotenv(dotenv_path)
+
+    config = {
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+        "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    }
+
+    if not config["OPENAI_API_KEY"]:
+        raise ValueError("Missing OPENAI_API_KEY in .env file.")
+
+    return config
 
 REQUIRED_FIELDS = [
     "shop_name", "phone", "address", "hours", "services",
