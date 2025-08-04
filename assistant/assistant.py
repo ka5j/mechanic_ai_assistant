@@ -4,9 +4,12 @@ import openai
 from utils.call_logger import log_interaction
 from core.config_loader import load_env_variables
 
+from openai import OpenAI
+from utils.usage_guard import can_call_model, record_usage
+
 # Load environment variables
 config = load_env_variables()
-openai.api_key = config["OPENAI_API_KEY"]
+client = OpenAI(api_key=config["OPENAI_API_KEY"])
 
 # Static system prompt
 SYSTEM_PROMPT = """
@@ -42,34 +45,52 @@ def get_service_response(user_input: str, full_config: dict) -> str | None:
             )
     return None
 
-def run_assistant(user_input: str, full_config: dict) -> str:
-    """
-    Full assistant logic with dynamic FAQ/service lookup before using OpenAI.
-    """
-    # First: Check for direct FAQ match
-    faq_response = get_faq_response(user_input, full_config)
-    if faq_response:
-        log_interaction("faq_match", {"input": user_input, "response": faq_response})
-        return faq_response
+def run_assistant(user_input: str, full_config: dict = None) -> str:
+    # Optional: dynamic FAQ/service logic if you merged that version
+    # (skip here if using simpler version)
+    if full_config:
+        from assistant.assistant import get_faq_response, get_service_response
+        faq_resp = get_faq_response(user_input, full_config)
+        if faq_resp:
+            log_interaction("faq_match", {"input": user_input, "response": faq_resp})
+            return faq_resp
+        svc_resp = get_service_response(user_input, full_config)
+        if svc_resp:
+            log_interaction("service_match", {"input": user_input, "response": svc_resp})
+            return svc_resp
 
-    # Second: Check if question mentions any known service
-    service_response = get_service_response(user_input, full_config)
-    if service_response:
-        log_interaction("service_match", {"input": user_input, "response": service_response})
-        return service_response
+    # Budget guard
+    estimated_prompt_tokens = len(user_input.split())  # rough proxy
+    if not can_call_model(estimated_prompt_tokens):
+        msg = "⚠️ Budget limit reached. Cannot process further requests right now."
+        log_interaction("usage_blocked", {"input": user_input, "reason": "budget_exceeded"})
+        return msg
 
-    # Otherwise: Use OpenAI for natural AI response
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=config["OPENAI_MODEL"],
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_input}
             ],
             temperature=0.3,
-            max_tokens=350
+            max_tokens=300
         )
-        reply = response['choices'][0]['message']['content'].strip()
+
+        # Record actual usage if available
+        usage_info = response.usage if hasattr(response, "usage") else None
+        if usage_info:
+            prompt_tokens = usage_info.get("prompt_tokens", 0)
+            completion_tokens = usage_info.get("completion_tokens", 0)
+            total = prompt_tokens + completion_tokens
+            record_usage(total)
+        else:
+            # fallback: estimate from response length
+            reply_text = response.choices[0].message.content.strip()
+            estimated_tokens = len(reply_text.split())
+            record_usage(estimated_tokens)
+
+        reply = response.choices[0].message.content.strip()
         log_interaction("ai_response", {"input": user_input, "response": reply})
         return reply
 

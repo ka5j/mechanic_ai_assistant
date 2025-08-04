@@ -1,12 +1,10 @@
 # booking/booking.py
 
-from calendar_integration.ics_writer import load_calendar, save_calendar, add_event_to_calendar
-from datetime import datetime, timedelta
-import os
+from calendar_integration.ics_writer import has_conflict, add_event_to_calendar
+from datetime import datetime
 import re
+import uuid
 from utils.call_logger import log_interaction
-
-ICS_PATH = "data/calendar/appointments.ics"
 
 def is_valid_date(date_str):
     try:
@@ -21,60 +19,35 @@ def is_valid_time(time_str):
 def parse_datetime(date: str, time: str) -> datetime:
     return datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
 
-def has_conflict(new_start: datetime, duration_minutes: int) -> bool:
+def handle_booking(config: dict, phone_number: str, call_id: str):
     """
-    Returns True if new appointment conflicts with existing events in the .ics.
-    """
-    from ics import Calendar
-
-    if not os.path.exists(ICS_PATH):
-        return False  # no calendar yet
-
-    with open(ICS_PATH, "r") as f:
-        calendar = Calendar(f.read())
-
-    new_end = new_start + timedelta(minutes=duration_minutes)
-
-    for event in calendar.events:
-        if event.begin is None or event.end is None:
-            continue
-        existing_start = event.begin.datetime
-        existing_end = event.end.datetime
-        # overlap check
-        if new_start < existing_end and new_end > existing_start:
-            return True
-    return False
-
-def handle_booking(config: dict, phone_number: str):
-    """
-    Handles appointment booking with collision detection.
+    Handles appointment booking with conflict detection, confirmation, and logging.
     """
     print("\n📅 Let's book your appointment.")
 
-    customer_name = input("🧾 Full Name: ").strip()
-    if not customer_name:
-        print("❌ Name cannot be empty.")
-        return
-
-    car_model = input("🚘 Car Make/Model: ").strip()
+    car_model = input("🚘 Car Make/Model (optional): ").strip()
+    issue = input("🔧 Describe the issue or service needed (optional): ").strip()
 
     # Show available services
     services = config.get("services", [])
+    if not services:
+        print("❌ No services configured.")
+        return
+
     print("\n🛠️ Available Services:")
     for i, service in enumerate(services, start=1):
-        print(f"{i}. {service['name']} - {service['price']} ({service.get('duration_minutes', 30)} min)")
+        duration = service.get("duration_minutes", 30)
+        print(f"{i}. {service['name']} - {service.get('price','N/A')} ({duration} min)")
 
     while True:
-        service_choice = input("🔢 Select a service by number: ").strip()
-        if not service_choice.isdigit() or not (1 <= int(service_choice) <= len(services)):
+        svc_choice = input("🔢 Select service by number: ").strip()
+        if not svc_choice.isdigit() or not (1 <= int(svc_choice) <= len(services)):
             print("❌ Invalid selection. Try again.")
             continue
-        selected_service = services[int(service_choice) - 1]
+        selected_service = services[int(svc_choice) - 1]
         break
 
-    notes = input("📝 Additional notes (optional): ").strip()
-
-    # Date/time input with validation
+    # Date input
     while True:
         date = input("📆 Preferred Date (YYYY-MM-DD): ").strip()
         if not is_valid_date(date):
@@ -82,6 +55,7 @@ def handle_booking(config: dict, phone_number: str):
             continue
         break
 
+    # Time input
     while True:
         time_str = input("⏰ Preferred Time (HH:MM): ").strip()
         if not is_valid_time(time_str):
@@ -89,7 +63,7 @@ def handle_booking(config: dict, phone_number: str):
             continue
         break
 
-    # Parse and check past
+    # Parse datetime
     try:
         appointment_dt = parse_datetime(date, time_str)
     except ValueError:
@@ -102,40 +76,50 @@ def handle_booking(config: dict, phone_number: str):
 
     duration = selected_service.get("duration_minutes", 30)
 
+    # Conflict detection
     if has_conflict(appointment_dt, duration):
-        print("❌ Time slot conflict: that time is already booked.")
+        print("❌ That time slot is already booked.")
         return
 
-    # Confirm booking
+    # Confirmation
+    short_phone = phone_number[-4:]
+    appointment_id = str(uuid.uuid4())[:8]
     print("\n🔒 Confirm Booking:")
-    print(f"Customer: {customer_name}")
-    print(f"Phone: {phone_number}")
-    print(f"Car: {car_model}")
     print(f"Service: {selected_service['name']}")
     print(f"When: {date} at {time_str} for {duration} minutes")
-    if notes:
-        print(f"Notes: {notes}")
+    print(f"Phone: ending in {short_phone}")
+    if car_model:
+        print(f"Car: {car_model}")
+    if issue:
+        print(f"Issue/Notes: {issue}")
+    print(f"Appointment ID: {appointment_id}")
     confirm = input("Confirm? (yes/no): ").strip().lower()
     if confirm != "yes":
         print("❌ Booking cancelled.")
         return
 
+    # Compose description
     description = (
-        f"Customer: {customer_name}\n"
+        f"Appointment ID: {appointment_id}\n"
         f"Phone: {phone_number}\n"
-        f"Car: {car_model}\n"
         f"Service: {selected_service['name']}\n"
-        f"Notes: {notes}"
+        f"Car: {car_model or 'N/A'}\n"
+        f"Issue/Notes: {issue or 'N/A'}"
     )
 
+    # Add to calendar
     add_event_to_calendar(date, time_str, "Mechanic Appointment", description, duration)
+
+    # Log booking
     log_interaction("booking_created", {
-        "customer_name": customer_name,
-        "car_model": car_model,
+        "appointment_id": appointment_id,
         "phone_number": phone_number,
         "service": selected_service["name"],
         "date": date,
         "time": time_str,
-        "notes": notes
+        "car_model": car_model,
+        "issue": issue
     })
-    print(f"\n✅ Appointment booked for {customer_name} on {date} at {time_str}.")
+
+    print(f"\n✅ Appointment booked for {selected_service['name']} on {date} at {time_str}.")
+    print(f"📌 Appointment ID: {appointment_id}. A reminder will be sent.")

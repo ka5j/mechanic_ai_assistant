@@ -1,7 +1,6 @@
 # main.py
 
 import sys
-from datetime import datetime
 from core.config_loader import load_config
 from utils.call_logger import log_call_start, log_call_end
 from assistant.entrypoint import start_assistant
@@ -15,7 +14,7 @@ def get_phone_number():
 
 def main():
     print("\n🚗 Superior Auto Clinic – AI Receptionist\n")
-    
+
     config = load_config()
     phone_number = get_phone_number()
     call_id, _ = log_call_start(phone_number)
@@ -28,6 +27,7 @@ def main():
         print(f"❗ An error occurred: {e}")
 
     log_call_end(call_id)
+    print("📞 Call session ended.\n")
 
 if __name__ == "__main__":
     main()
