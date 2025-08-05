@@ -1,0 +1,59 @@
+
+---- Config loading & normalization ----
+
+Loaded config: shop_name='Superior Auto Clinic' services=[ServiceConfig(name='Oil Change', duration_minutes=30, price='From $60'), ServiceConfig(name='Brake Inspection', duration_minutes=30, price='$40'), ServiceConfig(name='Tire Rotation', duration_minutes=20, price='$30'), ServiceConfig(name='Battery Test & Replacement', duration_minutes=25, price='Testing $25, replacement extra')] booking_slots=BookingSlotsConfig(interval_minutes=30) hours=HoursConfig(open='08:00', close='18:00') calendar=CalendarConfig(ics_path=PosixPath('data/calendar/appointments.ics'))
+
+---- Calendar conflict & suggestion ----
+
+Conflicts: True
+Suggestion: 2025-08-15 10:30:00-04:00
+
+---- Calendar corruption & recovery ----
+
+No conflict on corrupt: True
+
+---- Calendar write resilience ----
+
+Double-write succeeded
+
+---- Booking flow (seeded slots) + confirm ----
+
+Response: Appointment confirmed for Brake Inspection on 2025-08-19 at 14:00.
+
+---- Conflict then accept suggestion ----
+
+Response: Appointment confirmed for Oil Change on 2025-08-20 at 10:30.
+
+---- Conflict then reject suggestion => escalate ----
+
+Response: I'm having trouble completing that booking. I can transfer you to a human staff member for help.
+
+---- Fuzzy/multi-word service extraction ----
+
+Response: Appointment confirmed for Battery Test & Replacement on 2025-08-22 at 09:00.
+
+---- Informational & off-domain fallback ----
+
+Hours: We are open from 08:00 to 18:00.
+Pricing: Pricing: Tire Rotation: $30
+Off-domain: I'm only trained to assist with mechanic shop-related questions.
+
+---- Logging assertions ----
+
+Logged events: 31
+
+---- Bad config schema rejection ----
+
+Caught expected error: 3 validation errors for RootConfig
+services
+  Value error, At least one service must be defined [type=value_error, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.11/v/value_error
+hours
+  Field required [type=missing, input_value={'shop_name': 'X', 'services': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+calendar
+  Field required [type=missing, input_value={'shop_name': 'X', 'services': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+
+---ALL NON-LLM TESTS PASSED---
+

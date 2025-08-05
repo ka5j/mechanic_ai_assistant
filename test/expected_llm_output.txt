@@ -1,0 +1,35 @@
+
+=== Starting LLM-Flow Tests ===
+
+
+---- LLM_CONFIRM: YES / NO ----
+
+Reply='Yes, please' -> True
+Reply='No, thanks' -> False
+
+---- LLM_CONFIRM: UNCLEAR ----
+
+Reply='Maybe' -> None
+
+---- LLM_CONFIRM: USAGE LIMIT ----
+
+Caught UsageLimitError as expected
+
+---- LLM_CONFIRM: API ERROR ----
+
+Caught RuntimeError as expected: API down
+
+---- PROCESS_INTERACTION: YES -> BOOKING ----
+
+process_interaction resp: Appointment confirmed for Oil Change on 2025-08-25 at 11:00.
+
+---- PROCESS_INTERACTION: NO -> RETRY ----
+
+process_interaction resp: Okay, let's try again.
+
+---- PROCESS_INTERACTION: UNCLEAR -> ESCALATION ----
+
+process_interaction resp: I'm having trouble completing that booking. I can transfer you to a human staff member for help.
+
+---ALL LLM TESTS PASSED---
+
