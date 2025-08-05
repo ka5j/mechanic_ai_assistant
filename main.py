@@ -42,13 +42,13 @@ def main():
     client = OpenAI(api_key=env["OPENAI_API_KEY"])
     config = load_config()
 
-    print("🔧 AI Receptionist CLI")
+    print("AI Receptionist CLI")
     print("Type 'exit' or Ctrl-D to quit.")
     print("─────────────────────────────────\n")
 
     while True:
         try:
-            number = input("👉 New call! Enter customer phone number: ").strip()
+            number = input(">>> New call! Enter customer phone number: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             break
@@ -60,24 +60,24 @@ def main():
         session    = CallSession(number)
         io_adapter = ConsoleAdapter()
 
-        print(f"\n🤖 Hello! I’m your AI receptionist. How can I help you today?\n")
+        print(f"\nHello! I’m your AI receptionist. How can I help you today?\n")
 
         while True:
             try:
                 user_input = io_adapter.collect("> ")
             except (EOFError, KeyboardInterrupt):
-                print("\n📞 Call ended.")
+                print("\nCall ended.")
                 break
 
             if not user_input or user_input.lower() in ("bye", "hangup", "end call", "exit"):
-                print("📞 Call closed.\n")
+                print("Call closed.\n")
                 break
 
             try:
                 process_interaction(user_input, session, io_adapter)
             except Exception as e:
                 # Unexpected error → escalate
-                io_adapter.prompt("⚠️ Sorry, something went wrong. Transferring you to a human.")
+                io_adapter.prompt("Sorry, something went wrong. Transferring you to a human.")
                 print(f"[ERROR] {e!r}")
 
         # back to “New call” loop

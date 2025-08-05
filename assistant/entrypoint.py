@@ -38,17 +38,17 @@ def start_assistant(config, phone_number, call_id, session, io_adapter):
         if action == "booking":
             handle_booking(config, phone_number, call_id, session=session, io_adapter=io_adapter)
         elif action == "question":
-            user_question = io_adapter.collect("🗣️ What would you like to ask? ")
+            user_question = io_adapter.collect("What would you like to ask? ")
             if not user_question:
-                io_adapter.prompt("❌ No question entered.")
+                io_adapter.prompt("No question entered.")
                 continue
             session.add_history("user_question", input_data=user_question)
             log_event(session.call_id, "user_question", input_data=user_question)
             response = run_assistant(user_question, config, session=session)
-            io_adapter.prompt(f"\n🤖 {response}")
+            io_adapter.prompt(f"\n{response}")
             session.add_history("assistant_response", output_data=response)
             log_event(session.call_id, "assistant_response", output_data=response)
         else:
-            io_adapter.prompt("⚠️ This action type is not yet supported.")
+            io_adapter.prompt("This action type is not yet supported.")
             session.add_history("unsupported_action", input_data=selection)
             log_event(session.call_id, "unsupported_action", input_data=selection)

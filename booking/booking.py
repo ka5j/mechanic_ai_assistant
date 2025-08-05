@@ -30,7 +30,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
     """
     Handles appointment booking with extraction, conflict detection, suggestion, confirmation, and escalation.
     """
-    io_adapter.prompt("\n📅 Let's book your appointment.")
+    io_adapter.prompt("\nLet's book your appointment.")
     session.add_history("booking_start")
     log_event(session.call_id, "booking_start")
 
@@ -55,7 +55,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
 
     # Validate date
     if not is_valid_date(date_str):
-        io_adapter.prompt(f"❌ '{date_str}' is not a valid date format. Expected YYYY-MM-DD.")
+        io_adapter.prompt(f"'{date_str}' is not a valid date format. Expected YYYY-MM-DD.")
         session.add_history("date_invalid", input_data=date_str)
         log_event(session.call_id, "date_invalid", input_data=date_str)
         io_adapter.prompt(escalation_message())
@@ -64,7 +64,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
 
     # Validate time
     if not is_valid_time(time_str):
-        io_adapter.prompt(f"❌ '{time_str}' is not a valid time format. Expected HH:MM in 24h.")
+        io_adapter.prompt(f"'{time_str}' is not a valid time format. Expected HH:MM in 24h.")
         session.add_history("time_invalid", input_data=time_str)
         log_event(session.call_id, "time_invalid", input_data=time_str)
         io_adapter.prompt(escalation_message())
@@ -75,7 +75,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
     try:
         desired_dt = parse_local_datetime(date_str, time_str)
     except Exception as e:
-        io_adapter.prompt("❌ Failed to parse date/time. Escalating.")
+        io_adapter.prompt("Failed to parse date/time. Escalating.")
         mark_and_log(session, "parse_error", extra={"error": str(e)})
         return
 
@@ -91,7 +91,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
     # Conflict detection
     conflicts = has_conflict(desired_dt, duration, ics_path=config["calendar"].get("ics_path"))
     if conflicts:
-        io_adapter.prompt("⚠️ The requested slot is unavailable due to a conflict.")
+        io_adapter.prompt("The requested slot is unavailable due to a conflict.")
         session.add_history("conflict_detected", extra={"conflicts": conflicts})
         log_event(session.call_id, "conflict_detected", extra={"conflicts": conflicts})
 
@@ -115,7 +115,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
 
         if suggestion:
             readable = suggestion.strftime("%Y-%m-%d %H:%M")
-            io_adapter.prompt(f"➡️ Next available slot: {readable}. Accept? (yes/no)")
+            io_adapter.prompt(f"Next available slot: {readable}. Accept? (yes/no)")
             accept = io_adapter.collect("> ").lower()
             if accept.startswith("y"):
                 desired_dt = suggestion
@@ -128,7 +128,7 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
                 mark_and_log(session, "user_rejected_suggestion")
                 return
         else:
-            io_adapter.prompt("⚠️ No available alternative slot found in the next window. Escalating.")
+            io_adapter.prompt("No available alternative slot found in the next window. Escalating.")
             mark_and_log(session, "no_alternatives")
             return
 
@@ -137,10 +137,10 @@ def handle_booking(config: dict, phone_number: str, call_id: str, session, io_ad
         title = f"{service} for {phone_number}"
         description = f"Booked service: {service}"
         add_event_to_calendar(title, desired_dt, duration, description, ics_path=config["calendar"].get("ics_path"))
-        io_adapter.confirm(f"✅ Appointment confirmed for {service} on {desired_dt.strftime('%Y-%m-%d')} at {desired_dt.strftime('%H:%M')}.")
+        io_adapter.confirm(f"Appointment confirmed for {service} on {desired_dt.strftime('%Y-%m-%d')} at {desired_dt.strftime('%H:%M')}.")
         session.add_history("booking_confirmed", output_data={"service": service, "datetime": desired_dt.isoformat()})
         log_event(session.call_id, "booking_confirmed", output_data=session.state)
     except Exception as e:
-        io_adapter.prompt(f"❌ Booking failed: {e}")
+        io_adapter.prompt(f"Booking failed: {e}")
         session.add_history("booking_error", extra={"error": str(e)})
         log_event(session.call_id, "booking_error", outcome="error", extra={"error": str(e)})

@@ -34,7 +34,7 @@ def log_call_end(call_id):
     """
     log_file = LOG_DIR / f"{call_id}.json"
     if not log_file.exists():
-        print(f"⚠️ Warning: Log file not found for call_id {call_id}")
+        print(f"Warning: Log file not found for call_id {call_id}")
         return
 
     with open(log_file, "r+") as f:
@@ -51,7 +51,7 @@ def log_interaction(event_type, payload):
     """
     current_log_files = sorted(LOG_DIR.glob("*.json"), reverse=True)
     if not current_log_files:
-        print("⚠️ No active log files found.")
+        print("No active log files found.")
         return
 
     log_file = current_log_files[0]
@@ -68,4 +68,4 @@ def log_interaction(event_type, payload):
             json.dump(data, f, indent=4)
             f.truncate()
     except Exception as e:
-        print(f"❌ Failed to log interaction: {e}")
+        print(f"Failed to log interaction: {e}")

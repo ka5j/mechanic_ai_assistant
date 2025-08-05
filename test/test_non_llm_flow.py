@@ -137,7 +137,7 @@ def test_booking_flow_seeded_slots(config):
 
     print("Response:", resp)
     assert_true(
-        "✅ Appointment confirmed" in resp,
+        "Appointment confirmed" in resp,
         f"Expected booking confirmation, got: {resp}"
     )
 
@@ -190,7 +190,7 @@ def test_conflict_accept_suggestion(config):
 
     # 7) Assert the booking confirmation came through
     assert_true(
-        "✅ Appointment confirmed" in resp,
+        "Appointment confirmed" in resp,
         f"Suggestion acceptance failed, got: {resp}"
     )
 
@@ -283,7 +283,7 @@ def test_fuzzy_service_extraction(config):
 
     # 6) Assert it confirmed
     assert_true(
-        "✅ Appointment confirmed" in resp,
+        "Appointment confirmed" in resp,
         f"Fuzzy extraction failed, got: {resp}"
     )
 
@@ -352,7 +352,7 @@ def run_all():
     test_logging_content(config)
     test_bad_config_schema()
 
-    print("\n✅ ALL NON-LLM TESTS PASSED ✅\n")
+    print("\n---ALL NON-LLM TESTS PASSED---\n")
 
 if __name__ == "__main__":
     run_all()

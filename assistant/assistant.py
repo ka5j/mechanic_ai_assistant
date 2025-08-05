@@ -227,7 +227,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
                         session.add_history("clarified_date", input_data=ans)
                         log_event(call_id, "clarified_date", input_data=ans)
                     else:
-                        io_adapter.prompt("❌ Invalid date format. Use YYYY-MM-DD.")
+                        io_adapter.prompt("Invalid date format. Use YYYY-MM-DD.")
                         session.add_history("date_invalid", input_data=ans)
                         log_event(call_id, "date_invalid", input_data=ans)
             else:  # time
@@ -238,7 +238,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
                         session.add_history("clarified_time", input_data=ans)
                         log_event(call_id, "clarified_time", input_data=ans)
                     else:
-                        io_adapter.prompt("❌ Invalid time format. Use HH:MM in 24h.")
+                        io_adapter.prompt("Invalid time format. Use HH:MM in 24h.")
                         session.add_history("time_invalid", input_data=ans)
                         log_event(call_id, "time_invalid", input_data=ans)
             attempts += 1
@@ -268,7 +268,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
         # fallback to LLM
         prompt_msgs = build_llm_prompt(paraphrase, session, missing_slots=[])
         if not can_call_model():
-            io_adapter.prompt("⚠️ Usage limit reached. " + escalation_message())
+            io_adapter.prompt("Usage limit reached. " + escalation_message())
             log_event(call_id, "usage_limit")
             persist_call_session(session)
             return escalation_message()
@@ -297,7 +297,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
                 persist_call_session(session)
                 return escalation_message()
         except Exception as e:
-            io_adapter.prompt("⚠️ Error during confirmation. " + escalation_message())
+            io_adapter.prompt("Error during confirmation. " + escalation_message())
             mark_and_log(session, "confirm_error", extra={"error": str(e)})
             persist_call_session(session)
             return escalation_message()
@@ -363,7 +363,7 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
             description=f"Booked service: {svc}",
             ics_path=config.calendar.ics_path
         )
-        confirmation = f"✅ Appointment confirmed for {svc} on {session.state['date']} at {session.state['time']}."
+        confirmation = f"Appointment confirmed for {svc} on {session.state['date']} at {session.state['time']}."
         io_adapter.prompt(confirmation)
         session.add_history("booking_confirmed", output_data=confirmation)
         log_event(call_id, "booking_confirmed", output_data=session.state)
@@ -382,12 +382,12 @@ def process_interaction(user_input: str, session: CallSession, io_adapter, max_s
         return confirmation
 
     except FatalBookingError as e:
-        io_adapter.prompt("❌ Failed to finalize booking due to system error. " + escalation_message())
+        io_adapter.prompt("Failed to finalize booking due to system error. " + escalation_message())
         mark_and_log(session, "final_error", extra={"error": str(e)})
         persist_call_session(session)
         return escalation_message()
     except Exception as e:
-        io_adapter.prompt("❌ Failed to finalize booking. " + escalation_message())
+        io_adapter.prompt("Failed to finalize booking. " + escalation_message())
         mark_and_log(session, "final_error", extra={"error": str(e)})
         persist_call_session(session)
         return escalation_message()

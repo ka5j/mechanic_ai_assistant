@@ -20,33 +20,33 @@
 
 ```bash
 $ python main.py
-🔧 AI Receptionist CLI
+AI Receptionist CLI
 ─────────────────────────────────
-👉 New call! Enter customer phone number:
+>>> New call! Enter customer phone number:
 > 4165551234
 
-🤖 Hi there! What’s your name?
+Hi there! What’s your name?
 > Krish
 
-🤖 Great, Krish! What service do you need today?
+Great, Krish! What service do you need today?
 > Oil change
 
-🤖 When would you like to book it?
+When would you like to book it?
 > Tomorrow at 2pm
 
-📅 Checking availability...
-⚠️ That time is unavailable. How about:
+Checking availability...
+ That time is unavailable. How about:
   - Tomorrow at 3:00 PM
   - Tomorrow at 4:00 PM
 > 3:00 PM
 
-✅ Appointment confirmed for Oil Change at 3:00 PM tomorrow.
-📆 Added to the shop calendar.
+Appointment confirmed for Oil Change at 3:00 PM tomorrow.
+Added to the shop calendar.
 ```
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ```
 mechanic_ai_assistant/
@@ -74,7 +74,7 @@ mechanic_ai_assistant/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### 1. Clone the repo
 
@@ -86,7 +86,7 @@ python main.py
 
 ---
 
-## 📅 Calendar Integration
+## Calendar Integration
 
 Appointments are stored in a local `.ics` file (`appointments.ics`) using iCalendar format. This allows easy viewing in apps like:
 
@@ -94,14 +94,14 @@ Appointments are stored in a local `.ics` file (`appointments.ics`) using iCalen
 - Outlook
 - Apple Calendar
 
-📌 The assistant automatically:
+The assistant automatically:
 - Checks for overlapping bookings
 - Suggests next available time slots
 - Honors configurable business hours
 
 ---
 
-## 🤖 AI Assistant Capabilities
+## AI Assistant Capabilities
 
 The assistant uses OpenAI's GPT API under the hood to:
 
@@ -118,7 +118,7 @@ You can customize:
 
 ---
 
-## 🧩 Extensibility
+## Extensibility
 
 This backend is built to support:
 
@@ -133,7 +133,7 @@ All future interfaces will use the same core logic — no duplication or branchi
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Run unit tests with:
 
@@ -141,11 +141,11 @@ Run unit tests with:
 pytest
 ```
 
-> 💡 You are encouraged to add more test cases for slot filling, conflict resolution, and calendar write failures.
+> You are encouraged to add more test cases for slot filling, conflict resolution, and calendar write failures.
 
 ---
 
-## 📈 Logging and Monitoring
+## Logging and Monitoring
 
 - Key actions are logged to stdout
 - Escalation events and LLM usage are tracked
@@ -153,7 +153,7 @@ pytest
 
 ---
 
-## 🚧 Known Limitations
+## Known Limitations
 
 - `.ics` file access is not thread-safe (future versions will address concurrency)
 - No input validation for ambiguous user inputs like "next next Tuesday"
@@ -162,33 +162,39 @@ pytest
 
 ---
 
-## 💡 Future Plans
+## Future Plans
 
-- ✅ Voice integration with Twilio
-- ✅ Google Calendar adapter (real-time sync)
-- ✅ Booking confirmation via SMS
-- ✅ Dynamic service pricing and durations
-- ✅ Persistent session handling
-- ✅ Web dashboard for admins
-
----
-
-## 🧠 Built With
-
-- 🧠 OpenAI GPT-3.5 (LLM assistant)
-- 🕘 `ics` Python package for calendar handling
-- 🧪 `pytest` for testing
-- 🛠️ Built from scratch in pure Python with clean architecture
+- Voice integration with Twilio
+- Google Calendar adapter (real-time sync)
+- Booking confirmation via SMS
+- Dynamic service pricing and durations
+- Persistent session handling
+- Web dashboard for admins
 
 ---
 
-## 🧑‍💻 Author
+## Built With
 
-**Krish Ahuja**  
+- OpenAI GPT-3.5 (LLM assistant)
+- `ics` Python package for calendar handling
+- Built from scratch in pure Python with clean architecture
+
+---
+
+## Author
+
+**Krish**  
 Built as a foundation for a production-grade AI receptionist for mechanic shops and service-based businesses.
 
 ---
 
-## 📜 License
+## License
+Copyright © 2025 ka5j
 
-This project is under the MIT License — feel free to fork, modify, and extend as needed.
+This software is proprietary and confidential. All rights reserved.
+
+You may not modify, reuse, redistribute, or sell any part of this project without express written permission from the author.
+
+This software is protected under applicable intellectual property laws.
+
+

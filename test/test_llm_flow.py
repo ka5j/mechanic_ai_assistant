@@ -71,14 +71,14 @@ def run_all():
         A.client.chat.completions.create = lambda **k: FakeResponse(reply, pt=2, ct=3)
         sess = CallSession("+111")
         res = llm_confirm("Confirm booking", sess)
-        print(f"Reply='{reply}' → {res}")
+        print(f"Reply='{reply}' -> {res}")
         assert_true(res is expect, f"Expected {expect} for '{reply}'")
 
     # --- Test 2: llm_confirm UNCLEAR ---
     print_header("LLM_CONFIRM: UNCLEAR")
     A.client.chat.completions.create = lambda **k: FakeResponse("Maybe", pt=1, ct=1)
     res = llm_confirm("Confirm booking", CallSession("+222"))
-    print(f"Reply='Maybe' → {res}")
+    print(f"Reply='Maybe' -> {res}")
     assert_true(res is None, "Expected None for unclear reply")
 
     # --- Test 3: llm_confirm USAGE LIMIT ---
@@ -104,8 +104,8 @@ def run_all():
     except RuntimeError as e:
         print("Caught RuntimeError as expected:", e)
 
-    # --- Test 5: PROCESS_INTERACTION: YES → BOOKING (pre-seed + skip extractor) ---
-    print_header("PROCESS_INTERACTION: YES → BOOKING")
+    # --- Test 5: PROCESS_INTERACTION: YES -> BOOKING (pre-seed + skip extractor) ---
+    print_header("PROCESS_INTERACTION: YES -> BOOKING")
     A.client.chat.completions.create = lambda **k: FakeResponse("Yes", pt=1, ct=2)
     UG.can_call_model = lambda: True
     A.can_call_model  = lambda: True
@@ -127,11 +127,11 @@ def run_all():
 
     resp = process_interaction("Book appointment", session, adapter)
     print("process_interaction resp:", resp)
-    assert_true("✅ Appointment confirmed" in resp,
+    assert_true("Appointment confirmed" in resp,
                 "Expected booking with LLM fallback")
 
-    # --- Test 6: PROCESS_INTERACTION: NO → RETRY ---
-    print_header("PROCESS_INTERACTION: NO → RETRY")
+    # --- Test 6: PROCESS_INTERACTION: NO -> RETRY ---
+    print_header("PROCESS_INTERACTION: NO -> RETRY")
     A.client.chat.completions.create = lambda **k: FakeResponse("No", pt=1, ct=1)
 
     A.extract_and_prepare = lambda *args, **kwargs: None
@@ -149,8 +149,8 @@ def run_all():
     assert_true("Okay, let's try again." in resp,
                 "Expected retry when LLM says No")
 
-    # --- Test 7: PROCESS_INTERACTION: UNCLEAR → ESCALATION ---
-    print_header("PROCESS_INTERACTION: UNCLEAR → ESCALATION")
+    # --- Test 7: PROCESS_INTERACTION: UNCLEAR -> ESCALATION ---
+    print_header("PROCESS_INTERACTION: UNCLEAR -> ESCALATION")
     A.client.chat.completions.create = lambda **k: FakeResponse("Hmm", pt=1, ct=1)
 
     A.extract_and_prepare = lambda *args, **kwargs: None
@@ -168,7 +168,7 @@ def run_all():
     assert_true(escalation_message() in resp,
                 "Expected escalation when LLM unclear")
 
-    print("\n✅ ALL LLM TESTS PASSED ✅\n")
+    print("\n---ALL LLM TESTS PASSED---\n")
 
 if __name__ == "__main__":
     run_all()
