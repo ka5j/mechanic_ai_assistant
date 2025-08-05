@@ -1,49 +1,194 @@
-# AI Mechanic Receptionist Backend
+# Mechanic AI Assistant (CLI Backend)
 
-A production-grade, backend-first AI receptionist tailored for a local mechanic shop.  
-It handles appointment booking (service, date, time), availability/conflict resolution, concise clarification, and escalation to human staff when needed. Designed to be modular, cost-aware, auditable, and easily extensible (e.g., future telephony integration).
+**Mechanic AI Assistant** is a fully modular backend system that simulates a professional automotive shop receptionist. It intelligently guides customers through the booking process, answers service-related questions, handles schedule conflicts, and stores appointments in a real calendar file — all via a clean, terminal-based interface. Built with future-proofing in mind, this backend is ready to integrate with phone systems (like Twilio) and real calendar services (like Google Calendar) when desired.
 
 ---
 
-## 🚀 Features
+## Features
 
-- **Free-form slot extraction + clarification**: Extracts service, date (YYYY-MM-DD), and time (HH:MM 24h) from user input; asks only for missing or ambiguous pieces.  
-- **Booking with conflict detection**: Timezone-aware (America/Toronto) calendar integration (.ics) that detects overlaps and suggests the next available slot.  
-- **Confirmation flow**: Echoes back interpreted booking for affirmation before finalizing.  
-- **Unified escalation**: Consistent behavior when input can’t be resolved — flags the session and surfaces a human handoff message.  
-- **Structured session management**: `CallSession` encapsulates call state, collected slots, history, and escalation flag.  
-- **Structured logging**: Event-level logs of every decision, input, output, and error.  
-- **Deterministic info responses**: Handles common queries like hours and pricing without unnecessary LLM calls.  
-- **Prompt engineering built-in**: Bounded system prompt to avoid hallucination, minimal context, clarification policy, and escalation language.  
-- **Pluggable I/O via adapter pattern**: Starts with CLI; easily replaceable with telephony/web adapters later.  
-- **Test harness support**: Simulate normal, invalid, conflict, and escalation flows.
+- Intelligent appointment booking via natural conversation
+- Supports multiple service categories with customizable durations
+- Real-time availability detection using `.ics` calendar files
+- Built-in OpenAI assistant for slot-filling and conversation flow
+- Escalates to human staff when needed
+- Modular I/O layer for CLI, Twilio, or web interfaces
+- Logging and cost guard monitoring for production-readiness
+
+---
+
+## Demo (CLI Walkthrough)
+
+```bash
+$ python main.py
+🔧 AI Receptionist CLI
+─────────────────────────────────
+👉 New call! Enter customer phone number:
+> 4165551234
+
+🤖 Hi there! What’s your name?
+> Krish
+
+🤖 Great, Krish! What service do you need today?
+> Oil change
+
+🤖 When would you like to book it?
+> Tomorrow at 2pm
+
+📅 Checking availability...
+⚠️ That time is unavailable. How about:
+  - Tomorrow at 3:00 PM
+  - Tomorrow at 4:00 PM
+> 3:00 PM
+
+✅ Appointment confirmed for Oil Change at 3:00 PM tomorrow.
+📆 Added to the shop calendar.
+```
 
 ---
 
 ## 🏗️ Architecture Overview
 
-1. **CallSession** — Tracks per-call state, slots (service/date/time), history, and escalation.  
-2. **IOAdapter** — Abstracts input/output (e.g., `CLIAdapter` today).  
-3. **Slot Extractor** — Deterministically pulls booking info from free-form text and prompts for missing pieces.  
-4. **Assistant (LLM + Logic)** — Confirms intent, handles clarification, resolves conflicts, and finalizes bookings.  
-5. **Booking Engine / Calendar** — Manages `.ics` calendar, checks conflicts, suggests alternatives, writes appointments.  
-6. **Escalation Logic** — Centralized messaging and flagging when flow cannot complete cleanly.  
-7. **Structured Logger** — Logs all steps in `data/logs/structured_calls.json` for audit/debug.  
+```
+mechanic_ai_assistant/
+│
+├── main.py                     # Entry point for the assistant CLI
+├── assistant/                  # Orchestrates LLM-based conversation logic
+│
+├── core/                       # Business logic
+│
+├── io_adapters/                # Interface layer (CLI for now, Twilio-ready)
+│
+├── calendar_integration/       # Read/write calendar logic via .ics files
+│
+├── config/                     # System and business configuration
+│
+├── secrets/                    # Stores environment variables (excluded from repo)
+│
+├── data/                       # Persistent calendar data (appointments.ics)
+│
+├── test/                       # Unit tests and simulation utilities
+│
+├── requirements.txt            # Python dependencies
+└── README.md                   # You're here!
+```
 
 ---
 
-##🛠️ Configuration
-Edit config/demo_config.json (or provide your own) — key sections:
-- **services:** List of services with name, duration_minutes, price, etc.
-- **calendar.ics_path:** Path where .ics appointments are stored (default under data/calendar/).
-- **booking_slots.interval_minutes:** Granularity for alternative suggestions.
-hours.open / hours.close: Business hours for suggestion window.
-Escalation and cost guard parameters are inside code and usage guard logic.
+## ⚙️ Setup Instructions
+
+### 1. Clone the repo
+
+### 4. Run the CLI assistant
+
+```bash
+python main.py
+```
 
 ---
 
-##📚 Developer Notes
-- **Adapters:** Swap CLIAdapter for any input/output medium (HTTP webhook, telephony) without touching core logic.
-- **Prompt minimalism:** Only necessary context (missing or confirmed slots + latest utterance) is sent to the model. Full history is retained locally for auditing, not re-sent to reduce cost and drift.
-- **Cost guard:** usage_guard prevents runaway OpenAI usage; adjust or extend limits there.
-- **Timezone:** All booking logic assumes America/Toronto; internal datetime objects are timezone-aware.
+## 📅 Calendar Integration
+
+Appointments are stored in a local `.ics` file (`appointments.ics`) using iCalendar format. This allows easy viewing in apps like:
+
+- Google Calendar (import `.ics`)
+- Outlook
+- Apple Calendar
+
+📌 The assistant automatically:
+- Checks for overlapping bookings
+- Suggests next available time slots
+- Honors configurable business hours
+
+---
+
+## 🤖 AI Assistant Capabilities
+
+The assistant uses OpenAI's GPT API under the hood to:
+
+- Interpret vague user input (e.g., "next Friday around 4")
+- Extract intent and fill required booking fields
+- Re-prompt or escalate when information is missing
+- Maintain natural dialogue throughout the session
+
+You can customize:
+- Business hours
+- Available services and durations
+- LLM prompt behavior
+- Escalation conditions
+
+---
+
+## 🧩 Extensibility
+
+This backend is built to support:
+
+| Feature              | Status      | Description                                                  |
+|----------------------|-------------|--------------------------------------------------------------|
+| CLI I/O              | ✅ Complete | Fully working demo environment                               |
+| Twilio voice/SMS     | 🔜 Planned  | Drop-in adapter coming soon                                  |
+| Google Calendar Sync | 🔜 Planned  | Swap .ics file for real cloud calendar integration           |
+| WebSocket/Chat       | Optional    | Can easily be added via `io_adapters` abstraction            |
+
+All future interfaces will use the same core logic — no duplication or branching logic.
+
+---
+
+## 🧪 Testing
+
+Run unit tests with:
+
+```bash
+pytest
+```
+
+> 💡 You are encouraged to add more test cases for slot filling, conflict resolution, and calendar write failures.
+
+---
+
+## 📈 Logging and Monitoring
+
+- Key actions are logged to stdout
+- Escalation events and LLM usage are tracked
+- A **cost guard** monitors excessive API usage and prevents runaway billing
+
+---
+
+## 🚧 Known Limitations
+
+- `.ics` file access is not thread-safe (future versions will address concurrency)
+- No input validation for ambiguous user inputs like "next next Tuesday"
+- No retry logic for LLM/API failures
+- Session state is not persisted if the process is restarted mid-call
+
+---
+
+## 💡 Future Plans
+
+- ✅ Voice integration with Twilio
+- ✅ Google Calendar adapter (real-time sync)
+- ✅ Booking confirmation via SMS
+- ✅ Dynamic service pricing and durations
+- ✅ Persistent session handling
+- ✅ Web dashboard for admins
+
+---
+
+## 🧠 Built With
+
+- 🧠 OpenAI GPT-3.5 (LLM assistant)
+- 🕘 `ics` Python package for calendar handling
+- 🧪 `pytest` for testing
+- 🛠️ Built from scratch in pure Python with clean architecture
+
+---
+
+## 🧑‍💻 Author
+
+**Krish Ahuja**  
+Built as a foundation for a production-grade AI receptionist for mechanic shops and service-based businesses.
+
+---
+
+## 📜 License
+
+This project is under the MIT License — feel free to fork, modify, and extend as needed.
